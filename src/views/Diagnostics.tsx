@@ -54,15 +54,21 @@ export default function Diagnostics() {
         docs.push({ id: doc.id, ...doc.data() });
       });
       setHistory(docs);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading history:", err);
+      if (err.message?.includes('permission-denied')) {
+        console.error("Permissions error: Check security rules for ai_reports list");
+      }
     } finally {
       setLoadingHistory(false);
     }
   };
 
   const saveReport = async (findings: string, imgData: string) => {
-    if (!user) return;
+    if (!user) {
+      console.warn("User not logged in, analysis not saved to history.");
+      return;
+    }
     try {
       await addDoc(collection(db, 'ai_reports'), {
         ownerId: user.uid,
@@ -71,9 +77,15 @@ export default function Diagnostics() {
         status: 'completed',
         createdAt: serverTimestamp(),
       });
-      loadHistory();
-    } catch (err) {
+      await loadHistory();
+    } catch (err: any) {
       console.error("Error saving report:", err);
+      // If image too large or permission denied
+      if (err.message?.includes('value-too-large') || err.message?.includes('exceeds the limit')) {
+        alert("Image too large to save in history. Analysis shown above but not saved.");
+      } else if (err.message?.includes('permission-denied')) {
+        console.error("Permissions error: Check security rules for ai_reports create");
+      }
     }
   };
 
