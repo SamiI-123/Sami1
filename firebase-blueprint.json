@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "location": { "type": "string" },
+        "role": { "type": "string", "enum": ["farmer", "expert", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Farm": {
+      "title": "Farm",
+      "description": "Information about a specific farm",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "location": { "type": "object" },
+        "size": { "type": "number" },
+        "cropType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name"]
+    },
+    "DroneSession": {
+      "title": "Drone Monitoring Session",
+      "description": "A collection of media from a drone flight",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "farmId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "mediaUrls": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "required": ["farmId", "timestamp"]
+    },
+    "AIReport": {
+      "title": "AI Crop Analysis Report",
+      "description": "AI-generated diagnostics for crop health",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "findings": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "error"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "imageUrl", "status"]
+    },
+    "SensorData": {
+      "title": "IoT Sensor Data",
+      "description": "Periodic readings from farm sensors",
+      "type": "object",
+      "properties": {
+        "farmId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "moisture": { "type": "number" },
+        "temperature": { "type": "number" },
+        "humidity": { "type": "number" }
+      },
+      "required": ["farmId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "List of platform users"
+    },
+    "farms": {
+      "schema": "Farm",
+      "description": "User-owned farms"
+    },
+    "drone_sessions": {
+      "schema": "DroneSession",
+      "description": "History of drone monitoring flights"
+    },
+    "ai_reports": {
+      "schema": "AIReport",
+      "description": "AI analysis results for crop diseases"
+    },
+    "sensor_readings": {
+      "schema": "SensorData",
+      "description": "Time-series data from farm IoT sensors"
+    }
+  }
+}

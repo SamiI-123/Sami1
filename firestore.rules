@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // -------------------------------------------------------------------------
+    // HELPERS
+    // -------------------------------------------------------------------------
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function emailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // -------------------------------------------------------------------------
+    // ENTITY VALIDATIONS
+    // -------------------------------------------------------------------------
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string
+        && (data.role == 'farmer' || data.role == 'expert' || data.role == 'admin');
+    }
+
+    function isValidFarm(data) {
+      return data.ownerId == request.auth.uid
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.createdAt == request.time;
+    }
+
+    function isValidReport(data) {
+      return data.ownerId == request.auth.uid
+        && data.imageUrl is string && data.imageUrl.size() > 10
+        && data.status in ['pending', 'completed', 'error']
+        && data.createdAt == request.time;
+    }
+
+    // -------------------------------------------------------------------------
+    // DEFAULT DENY
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // COLLECTIONS
+    // -------------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'role']);
+    }
+
+    match /farms/{farmId} {
+      allow get: if isSignedIn(); // Experts might need to see farm details
+      allow list: if isSignedIn(); // Filtered by client
+      allow create: if isSignedIn() && isValidFarm(incoming());
+      allow update: if isOwner(existing().ownerId) && isValidFarm(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'location', 'size', 'cropType']);
+      allow delete: if isOwner(existing().ownerId);
+    }
+
+    match /drone_sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isOwner(get(/databases/$(database)/documents/farms/$(incoming().farmId)).data.ownerId);
+    }
+
+    match /ai_reports/{reportId} {
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidReport(incoming());
+      allow update: if isSignedIn() && isOwner(existing().ownerId);
+      allow delete: if isOwner(existing().ownerId);
+    }
+
+    match /sensor_readings/{readingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+  }
+}

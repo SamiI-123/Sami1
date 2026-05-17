@@ -1,0 +1,13 @@
+{
+  "name": "Remix: Agrinovia",
+  "description": "A smart agriculture platform featuring drone monitoring, AI crop disease detection, and real-time farm analytics.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "AI Crop Disease Detection",
+    "Real-time Farm Monitoring",
+    "IoT Integration Dashboard"
+  ]
+}
