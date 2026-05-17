@@ -5,9 +5,11 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, TreePine, Droplets, Thermometer, 
-  Map as MapIcon, ChevronRight, Activity, Camera
+  Map as MapIcon, ChevronRight, Activity, Camera,
+  Globe, ExternalLink
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { OFFICIAL_WEBSITE } from '../constants';
 
 const data = [
   { name: 'Mon', wheat: 400, corn: 240, soil: 80 },
@@ -129,6 +131,16 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             <button className="w-full py-4 rounded-2xl bg-natural-bg border border-natural-border text-xs font-black uppercase tracking-widest text-natural-text hover:bg-gray-50 transition-all shadow-sm active:scale-[0.98]">
               View All Logs
             </button>
+            <a 
+              href={OFFICIAL_WEBSITE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-4 rounded-2xl bg-primary-green/5 border border-primary-green/20 text-xs font-black uppercase tracking-widest text-primary-green hover:bg-primary-green/10 transition-all flex items-center justify-center gap-2"
+            >
+              <Globe size={14} />
+              Official Website
+              <ExternalLink size={12} className="opacity-50" />
+            </a>
           </div>
         </div>
       </div>

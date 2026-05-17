@@ -1,10 +1,10 @@
 {
-  "projectId": "remixed-project-id",
-  "appId": "remixed-app-id",
-  "apiKey": "remixed-api-key",
-  "authDomain": "remixed-auth-domain",
-  "firestoreDatabaseId": "remixed-firestore-database-id",
-  "storageBucket": "remixed-storage-bucket",
-  "messagingSenderId": "remixed-messaging-sender-id",
-  "measurementId": "remixed-measurement-id"
+  "projectId": "green-harmony-h8gvj",
+  "appId": "1:198214083729:web:e1d5740c724706b7d00b30",
+  "apiKey": "AIzaSyDjX9BYz8ZdRwu6y-U8lELXUKR334soPIM",
+  "authDomain": "green-harmony-h8gvj.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-f1b0d3da-4d24-494d-b046-921ccc9fe074",
+  "storageBucket": "green-harmony-h8gvj.firebasestorage.app",
+  "messagingSenderId": "198214083729",
+  "measurementId": ""
 }

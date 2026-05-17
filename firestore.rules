@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // -------------------------------------------------------------------------
-    // HELPERS
+    // GLOBAL HELPERS
     // -------------------------------------------------------------------------
     
     function isSignedIn() {
@@ -14,8 +14,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    function emailVerified() {
-      return request.auth.token.email_verified == true;
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
     }
     
     function incoming() {
@@ -31,26 +31,43 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------------
-    // ENTITY VALIDATIONS
+    // ENTITY VALIDATION BLUEPRINTS
     // -------------------------------------------------------------------------
 
     function isValidUser(data) {
       return data.uid == request.auth.uid 
-        && data.email is string
-        && (data.role == 'farmer' || data.role == 'expert' || data.role == 'admin');
+        && data.email is string && data.email.size() <= 256
+        && data.displayName is string && data.displayName.size() <= 128
+        && (data.role == 'farmer' || data.role == 'expert' || data.role == 'admin')
+        && data.keys().hasAll(['uid', 'email', 'displayName', 'role'])
+        && data.keys().size() >= 4;
     }
 
     function isValidFarm(data) {
       return data.ownerId == request.auth.uid
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
-        && data.createdAt == request.time;
+        && data.createdAt == request.time
+        && data.keys().hasAll(['ownerId', 'name', 'createdAt'])
+        && data.keys().size() >= 3;
     }
 
     function isValidReport(data) {
       return data.ownerId == request.auth.uid
-        && data.imageUrl is string && data.imageUrl.size() > 10
+        && data.imageUrl is string && data.imageUrl.size() >= 10 && data.imageUrl.size() <= 2048
         && data.status in ['pending', 'completed', 'error']
-        && data.createdAt == request.time;
+        && data.createdAt == request.time
+        && data.keys().hasAll(['ownerId', 'imageUrl', 'status', 'createdAt'])
+        && data.keys().size() >= 4;
+    }
+
+    function isValidSensorData(data) {
+      return data.farmId is string && data.farmId.size() <= 128
+        && data.timestamp == request.time
+        && data.moisture is number
+        && data.temperature is number
+        && data.humidity is number
+        && data.keys().hasAll(['farmId', 'timestamp', 'moisture', 'temperature', 'humidity'])
+        && data.keys().size() == 5;
     }
 
     // -------------------------------------------------------------------------
@@ -65,39 +82,52 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
-      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow get: if isOwner(userId);
+      allow list: if false; // Users cannot list other users
+      allow create: if isOwner(userId) && isValidUser(incoming()) && isVerified();
       allow update: if isOwner(userId) && isValidUser(incoming()) 
-        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'role']);
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'role', 'location', 'phoneNumber']);
     }
 
     match /farms/{farmId} {
-      allow get: if isSignedIn(); // Experts might need to see farm details
-      allow list: if isSignedIn(); // Filtered by client
-      allow create: if isSignedIn() && isValidFarm(incoming());
+      allow get: if isSignedIn() && isValidId(farmId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerified() && isValidFarm(incoming());
       allow update: if isOwner(existing().ownerId) && isValidFarm(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
         && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'location', 'size', 'cropType']);
       allow delete: if isOwner(existing().ownerId);
     }
 
     match /drone_sessions/{sessionId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && isOwner(get(/databases/$(database)/documents/farms/$(incoming().farmId)).data.ownerId);
+      // Sessions relate to farms. Access check requires farm lookup.
+      allow get: if isSignedIn() && isValidId(sessionId) 
+        && isOwner(get(/databases/$(database)/documents/farms/$(existing().farmId)).data.ownerId);
+      allow list: if false; // Force single-doc or subcollection usage if ever expanded
+      allow create: if isVerified() && isValidId(incoming().farmId)
+        && isOwner(get(/databases/$(database)/documents/farms/$(incoming().farmId)).data.ownerId);
     }
 
     match /ai_reports/{reportId} {
+      allow get: if isOwner(existing().ownerId) && isValidId(reportId);
       allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && isValidReport(incoming());
-      allow update: if isSignedIn() && isOwner(existing().ownerId);
+      allow create: if isVerified() && isValidReport(incoming());
+      allow update: if isOwner(existing().ownerId) && isValidReport(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['findings', 'status']);
       allow delete: if isOwner(existing().ownerId);
     }
 
     match /sensor_readings/{readingId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read: if isSignedIn() && isValidId(readingId)
+        && isOwner(get(/databases/$(database)/documents/farms/$(existing().farmId)).data.ownerId);
+      allow list: if isSignedIn() && isOwner(get(/databases/$(database)/documents/farms/$(resource.data.farmId)).data.ownerId);
+      allow create: if isVerified() && isValidSensorData(incoming())
+        && isOwner(get(/databases/$(database)/documents/farms/$(incoming().farmId)).data.ownerId);
     }
   }
 }

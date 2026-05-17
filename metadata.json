@@ -1,11 +1,12 @@
 {
-  "name": "Remix: Agrinovia",
-  "description": "A smart agriculture platform featuring drone monitoring, AI crop disease detection, and real-time farm analytics.",
+  "name": "Agrinovia",
+  "description": "A smart agriculture platform featuring drone monitoring, AI crop disease detection, and real-time farm analytics. Official website: https://agritche.vercel.com/",
   "requestFramePermissions": [
     "camera",
     "geolocation"
   ],
   "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
     "AI Crop Disease Detection",
     "Real-time Farm Monitoring",
     "IoT Integration Dashboard"

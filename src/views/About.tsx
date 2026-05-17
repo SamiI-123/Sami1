@@ -79,7 +79,18 @@ export default function About() {
         </p>
       </motion.div>
 
-      <footer className="text-center pt-10">
+      <footer className="text-center pt-10 space-y-4">
+        <div className="flex justify-center gap-4">
+          <a 
+            href="https://agritche.vercel.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-6 py-2 bg-natural-bg border border-natural-border rounded-xl text-xs font-bold text-primary-green hover:bg-primary-green hover:text-white transition-all inline-flex items-center gap-2"
+          >
+            <Globe size={14} />
+            Official Website
+          </a>
+        </div>
         <p className="text-[10px] font-black text-natural-muted uppercase tracking-[0.3em]">
           Agrinovia Systems v1.4.2 // Advanced Bio-Intelligence Unit
         </p>

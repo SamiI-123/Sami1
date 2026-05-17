@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Power, ShieldAlert, Users, 
-  Waves, Zap, X, ZapOff, Microscope, MessageSquare
+  Waves, Zap, X, ZapOff, Microscope, MessageSquare,
+  Globe
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { OFFICIAL_WEBSITE } from '../constants';
 
 interface QuickActionsProps {
   userRole?: string;
@@ -15,6 +17,13 @@ export default function QuickActions({ userRole }: QuickActionsProps) {
   const [pumpActive, setPumpActive] = useState(false);
 
   const baseActions = [
+    {
+      id: 'website',
+      label: 'Visit Website',
+      icon: Globe,
+      color: 'bg-primary-green-light',
+      onClick: () => window.open(OFFICIAL_WEBSITE, '_blank')
+    },
     { 
       id: 'pump', 
       label: pumpActive ? 'Stop Pump' : 'Start Pump', 
