@@ -20,6 +20,7 @@ import ExpertConsole from './views/ExpertConsole';
 import SettingsView from './views/Settings';
 import About from './views/About';
 import Auth from './views/Auth';
+import Landing from './views/Landing';
 import QuickActions from './components/QuickActions';
 import { NAV_ITEMS } from './constants';
 
@@ -27,8 +28,8 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
 function MainApp() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState('landing');
   const [profile, setProfile] = useState<any>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -42,11 +43,15 @@ function MainApp() {
     photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Samson'
   };
 
-  const currentUser = user || guestUser;
+  useAuth(); // keep hook reactive
 
   React.useEffect(() => {
     if (user) {
       setShowAuth(false);
+      // Set to dashboard when logged in if currently on landing
+      if (activeTab === 'landing') {
+        setActiveTab('dashboard');
+      }
       const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
         if (doc.exists()) {
           setProfile(doc.data());
@@ -62,9 +67,24 @@ function MainApp() {
     }
   }, [profile]);
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-natural-bg flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary-green animate-spin" />
+      </div>
+    );
+  }
+
+  // Marketing page for non-logged in or explicit choice
+  if (activeTab === 'landing' && !user) {
+    return <Landing onStart={() => setActiveTab('dashboard')} />;
+  }
+
   if (showAuth && !user) {
     return <Auth onBack={() => setShowAuth(false)} />;
   }
+
+  const currentUser = user || guestUser;
 
   return (
     <div className="min-h-screen bg-natural-bg flex text-natural-text">
@@ -244,6 +264,7 @@ function MainApp() {
               transition={{ duration: 0.2, ease: "easeOut" }}
               className="min-h-full"
             >
+              {activeTab === 'landing' && <Landing onStart={() => setActiveTab('dashboard')} />}
               {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab} />}
               {activeTab === 'diagnostics' && <Diagnostics />}
               {activeTab === 'sensors' && <Sensors />}

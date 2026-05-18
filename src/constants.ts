@@ -3,7 +3,8 @@ import { LayoutDashboard, Drone, ShieldAlert, Thermometer, Users, Settings, LogO
 export const OFFICIAL_WEBSITE = "https://agritche.vercel.com/";
 
 export const NAV_ITEMS =  [
-  { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+  { id: 'landing', label: 'Home', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'diagnostics', label: 'Diagnostics', icon: ShieldAlert },
   { id: 'sensors', label: 'Sensors', icon: Thermometer },
   { id: 'expert', label: 'Expert Console', icon: ShieldCheck },
