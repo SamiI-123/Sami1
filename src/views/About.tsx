@@ -82,7 +82,7 @@ export default function About() {
       <footer className="text-center pt-10 space-y-4">
         <div className="flex justify-center gap-4">
           <a 
-            href="https://agritche.vercel.com/" 
+            href="https://23655e3abc50784a-196-190-62-88.serveousercontent.com" 
             target="_blank" 
             rel="noopener noreferrer"
             className="px-6 py-2 bg-natural-bg border border-natural-border rounded-xl text-xs font-bold text-primary-green hover:bg-primary-green hover:text-white transition-all inline-flex items-center gap-2"

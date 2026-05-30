@@ -30,6 +30,24 @@ async function startServer() {
     });
   });
 
+  // Raspberry Pi Proxy bypass route
+  app.get("/api/pi-proxy", async (req, res) => {
+    try {
+      const targetUrl = req.query.url as string;
+      if (!targetUrl) return res.status(400).json({ error: "Target URL is required" });
+      
+      const fetchResponse = await fetch(targetUrl);
+      if (!fetchResponse.ok) {
+        throw new Error(`Failed to fetch from target: ${fetchResponse.status} ${fetchResponse.statusText}`);
+      }
+      const data = await fetchResponse.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("Pi proxy failed:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // API Routes
   app.post("/api/analyze-crop", async (req, res) => {
     try {

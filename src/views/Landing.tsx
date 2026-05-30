@@ -250,7 +250,7 @@ export default function Landing({ onStart }: LandingProps) {
             <a href="#" className="hover:text-primary-green">Terms</a>
             <a href="#" className="hover:text-primary-green">Privacy</a>
             <a href="#" className="hover:text-primary-green">Contact</a>
-            <a href="https://agritche.vercel.com" className="text-primary-green">agritche.vercel.com</a>
+            <a href="https://23655e3abc50784a-196-190-62-88.serveousercontent.com" className="text-primary-green">serveousercontent.com</a>
           </div>
 
           <p className="text-[10px] font-bold text-natural-muted uppercase tracking-widest opacity-40">

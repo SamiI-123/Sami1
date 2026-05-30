@@ -1,6 +1,6 @@
 import { LayoutDashboard, Drone, ShieldAlert, Thermometer, Users, Settings, LogOut, ChevronRight, Droplets, MapPin, Wind, Info, ShieldCheck } from 'lucide-react';
 
-export const OFFICIAL_WEBSITE = "https://agritche.vercel.com/";
+export const OFFICIAL_WEBSITE = "https://23655e3abc50784a-196-190-62-88.serveousercontent.com/";
 
 export const NAV_ITEMS =  [
   { id: 'landing', label: 'Home', icon: LayoutDashboard },

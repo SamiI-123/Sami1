@@ -1,6 +1,6 @@
 {
   "name": "Agrinovia",
-  "description": "A smart agriculture platform featuring drone monitoring, AI crop disease detection, and real-time farm analytics. Official website: https://agritche.vercel.com/",
+  "description": "A smart agriculture platform featuring drone monitoring, AI crop disease detection, and real-time farm analytics. Official website: https://23655e3abc50784a-196-190-62-88.serveousercontent.com/",
   "requestFramePermissions": [
     "camera",
     "geolocation"

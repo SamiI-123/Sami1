@@ -23,6 +23,16 @@ const sensorHistory = [
 export default function Sensors() {
   const [pumpActive, setPumpActive] = useState(false);
   const [lastRun, setLastRun] = useState('2h 15m ago');
+  const [history, setHistory] = useState(sensorHistory);
+
+  // Load configuration from localStorage
+  const [piDataTunnel] = useState(() => localStorage.getItem('pi_data_tunnel') || 'https://23655e3abc50784a-196-190-62-88.serveousercontent.com/data');
+  const [piDataLocal] = useState(() => localStorage.getItem('pi_data_local') || 'http://172.20.10.6:5001/data');
+  const [piActiveMode] = useState(() => localStorage.getItem('pi_active_mode') || 'tunnel');
+  const [piSensorSync] = useState(() => localStorage.getItem('pi_sensor_sync') === 'true');
+  
+  const [liveData, setLiveData] = useState<any>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'fetching' | 'success' | 'failed'>('idle');
 
   const togglePump = () => {
     setPumpActive(!pumpActive);
@@ -31,16 +41,80 @@ export default function Sensors() {
     }
   };
 
+  // Raspberry Pi Live sensor fetch
+  React.useEffect(() => {
+    if (!piSensorSync) return;
+
+    const endpoint = piActiveMode === 'tunnel' ? piDataTunnel : piDataLocal;
+    
+    const fetchPiData = async () => {
+      setConnectionStatus('fetching');
+      try {
+        // Try proxy bypass route to resolve mixed content in a secure environment
+        const proxyUrl = `/api/pi-proxy?url=${encodeURIComponent(endpoint)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error("Proxy fetch failed");
+        const json = await res.json();
+        
+        if (json && typeof json === 'object') {
+          setLiveData({
+            moisture: typeof json.moisture === 'number' ? json.moisture : 62,
+            temp: typeof json.temperature === 'number' ? json.temperature : (typeof json.temp === 'number' ? json.temp : 24),
+            humidity: typeof json.humidity === 'number' ? json.humidity : 55
+          });
+          setConnectionStatus('success');
+        }
+      } catch (err) {
+        console.warn("Proxy telemetry route failed; attempting direct query...", err);
+        try {
+          const res = await fetch(endpoint);
+          const json = await res.json();
+          if (json && typeof json === 'object') {
+            setLiveData({
+              moisture: typeof json.moisture === 'number' ? json.moisture : 62,
+              temp: typeof json.temperature === 'number' ? json.temperature : (typeof json.temp === 'number' ? json.temp : 24),
+              humidity: typeof json.humidity === 'number' ? json.humidity : 55
+            });
+            setConnectionStatus('success');
+          }
+        } catch (e) {
+          console.error("Direct fetch also failed:", e);
+          setConnectionStatus('failed');
+        }
+      }
+    };
+
+    fetchPiData();
+    const intervalId = setInterval(fetchPiData, 10000); // refresh every 10s
+    return () => clearInterval(intervalId);
+  }, [piSensorSync, piActiveMode, piDataTunnel, piDataLocal]);
+
+  // Handle setting active sensor readings on charts history array
+  React.useEffect(() => {
+    if (liveData) {
+      setHistory(prev => {
+        const timeKey = 'Now';
+        const exists = prev.some(item => item.time === timeKey);
+        if (exists) {
+          return prev.map(item => item.time === timeKey ? { ...item, moisture: liveData.moisture, temp: liveData.temp } : item);
+        } else {
+          return [...prev, { time: timeKey, moisture: liveData.moisture, temp: liveData.temp }];
+        }
+      });
+    }
+  }, [liveData]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Sensor Nodes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SensorNode 
-          id="NODE-24A" 
-          status="online" 
-          battery="88%" 
-          location="North Sector"
-          readings={{ moisture: 62, temp: 24, humidity: 55 }}
+          id={piSensorSync ? "RASPBERRY-PI" : "NODE-24A"} 
+          status={piSensorSync ? (connectionStatus === 'success' ? "online" : connectionStatus === 'fetching' ? "syncing" : "offline") : "online"} 
+          battery={piSensorSync ? (connectionStatus === 'success' ? "100%" : "—") : "88%"} 
+          location={piSensorSync ? "Linked Sensor Hub" : "North Sector"}
+          readings={piSensorSync && liveData ? liveData : { moisture: 62, temp: 24, humidity: 55 }}
+          isPi={piSensorSync}
         />
         <SensorNode 
           id="NODE-12B" 
@@ -75,7 +149,7 @@ export default function Sensors() {
                   onClick={() => exportToPDF(
                     'Soil Moisture History Report',
                     ['Time', 'Moisture Content (%)'],
-                    sensorHistory.map(d => [d.time, `${d.moisture}%`]),
+                    history.map(d => [d.time, `${d.moisture}%`]),
                     'moisture_report'
                   )}
                   className="p-2.5 rounded-xl bg-natural-bg border border-natural-border text-natural-muted hover:text-accent-tan transition-all"
@@ -91,7 +165,7 @@ export default function Sensors() {
            </div>
            <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={sensorHistory}>
+                 <LineChart data={history}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E0E0D0" />
                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#8AA382', fontWeight: 600}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#8AA382', fontWeight: 600}} />
@@ -113,7 +187,7 @@ export default function Sensors() {
                   onClick={() => exportToPDF(
                     'Thermal Variation Report',
                     ['Time', 'Temperature (°C)'],
-                    sensorHistory.map(d => [d.time, `${d.temp}°C`]),
+                    history.map(d => [d.time, `${d.temp}°C`]),
                     'thermal_report'
                   )}
                   className="p-2.5 rounded-xl bg-natural-bg border border-natural-border text-natural-muted hover:text-accent-tan transition-all"
@@ -126,7 +200,7 @@ export default function Sensors() {
            </div>
            <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={sensorHistory}>
+                 <BarChart data={history}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E0E0D0" />
                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#8AA382', fontWeight: 600}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#8AA382', fontWeight: 600}} />

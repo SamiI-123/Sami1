@@ -16,6 +16,24 @@ export default function Monitoring() {
     temp: 24
   });
 
+  // Raspberry Pi Streaming Settings loaded from localStorage
+  const [piStreamTunnel] = useState(() => localStorage.getItem('pi_stream_tunnel') || 'https://23655e3abc50784a-196-190-62-88.serveousercontent.com');
+  const [piStreamLocal] = useState(() => localStorage.getItem('pi_stream_local') || 'http://172.20.10.6:5001');
+  const [piCameraPath] = useState(() => localStorage.getItem('pi_camera_path') || '/video_feed');
+  const [piActiveModeDefault] = useState(() => localStorage.getItem('pi_active_mode') || 'tunnel');
+  const [piRenderMode] = useState(() => localStorage.getItem('pi_render_mode') || 'image');
+
+  // Direct active toggler for local/remote testing
+  const [streamSourceMode, setStreamSourceMode] = useState<'tunnel' | 'local' | 'demo'>(() => {
+    return (piActiveModeDefault as 'tunnel' | 'local') || 'tunnel';
+  });
+
+  // Compute stream URL
+  const baseStreamUrl = streamSourceMode === 'tunnel' ? piStreamTunnel : piStreamLocal;
+  const cleanBase = baseStreamUrl.endsWith('/') ? baseStreamUrl.slice(0, -1) : baseStreamUrl;
+  const cleanPath = piCameraPath.startsWith('/') ? piCameraPath : '/' + piCameraPath;
+  const finalStreamUrl = streamSourceMode === 'demo' ? '' : (cleanBase + cleanPath);
+
   // Simulating telemetry updates
   React.useEffect(() => {
     if (!isLaunched) return;
@@ -41,16 +59,61 @@ export default function Monitoring() {
         {/* Main Feed */}
         <div className="lg:col-span-3 space-y-6">
           <div className="relative aspect-video bg-natural-text rounded-[3rem] overflow-hidden group shadow-2xl border-8 border-white">
-             {/* Simulated Video Feed */}
-             <img 
-               src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2026&auto=format&fit=crop" 
-               alt="Drone Feed" 
-               className={cn(
-                 "w-full h-full object-cover transition-all duration-1000",
-                 isLaunched ? "opacity-90 brightness-110 scale-105" : "opacity-40 grayscale brightness-50 scale-100"
-               )}
-             />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+             {/* Simulated or Live Video Feed */}
+             {streamSourceMode === 'demo' ? (
+                <img 
+                  src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2026&auto=format&fit=crop" 
+                  alt="Drone Feed" 
+                  className={cn(
+                    "w-full h-full object-cover transition-all duration-1000",
+                    isLaunched ? "opacity-90 brightness-110 scale-105" : "opacity-40 grayscale brightness-50 scale-100"
+                  )}
+                />
+             ) : piRenderMode === 'image' ? (
+                <div className="relative w-full h-full bg-black flex items-center justify-center">
+                  <img 
+                    src={finalStreamUrl} 
+                    alt="Pi Stream Live Feed" 
+                    referrerPolicy="no-referrer"
+                    className={cn(
+                      "w-full h-full object-contain transition-all duration-1000",
+                      isLaunched ? "opacity-100 brightness-110" : "opacity-30 grayscale brightness-50"
+                    )}
+                    onError={(e) => {
+                      console.warn("Pi Stream connection failed; resetting image background placeholder.");
+                      e.currentTarget.style.display = 'none';
+                      const errorText = document.getElementById('pi-stream-err');
+                      if (errorText) errorText.style.display = 'flex';
+                    }}
+                    onLoad={() => {
+                      const errorText = document.getElementById('pi-stream-err');
+                      if (errorText) errorText.style.display = 'none';
+                    }}
+                  />
+                  <div 
+                    id="pi-stream-err" 
+                    className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/95 text-white space-y-3 z-10"
+                    style={{ display: 'none' }}
+                  >
+                    <Video size={40} className="text-red-400 animate-pulse" />
+                    <p className="text-sm font-black uppercase tracking-widest text-red-400">Stream Connection Offline</p>
+                    <p className="text-xs text-zinc-400 font-medium max-w-sm leading-relaxed">
+                      Unable to connect to <code className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-300 font-mono text-[10px] break-all">{finalStreamUrl}</code>.<br />Check your Python setup or switch pipeline modes above.
+                    </p>
+                  </div>
+                </div>
+             ) : (
+                <iframe
+                  src={finalStreamUrl}
+                  title="Pi Camera Stream Embed"
+                  referrerPolicy="no-referrer"
+                  className={cn(
+                    "w-full h-full border-none bg-black transition-all duration-1000",
+                    isLaunched ? "opacity-100" : "opacity-30 grayscale"
+                  )}
+                />
+             )}
+             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
              
              {/* Mission Status Overlay */}
              {!isLaunched && (
@@ -83,13 +146,52 @@ export default function Monitoring() {
                 <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
                    <div className={cn("w-2 h-2 rounded-full", isLaunched ? "bg-accent-tan animate-pulse" : "bg-red-500")}></div>
                    <span className="text-[10px] font-bold text-white tracking-widest uppercase">
-                     {isLaunched ? 'CAM_01 LIVE' : 'CAM_01 STANDBY'}
+                     {streamSourceMode === 'demo' ? 'DEMO MODE' : isLaunched ? 'CAM_01 LIVE' : 'CAM_01 STANDBY'}
                    </span>
                 </div>
-                <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-                   <Signal size={12} className="text-white" />
-                   <span className="text-[10px] font-bold text-white tracking-widest uppercase italic">SIGNAL: {isLaunched ? 'EXCELLENT' : 'LOW'}</span>
-                </div>
+                {streamSourceMode !== 'demo' && (
+                  <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
+                     <Signal size={12} className="text-white" />
+                     <span className="text-[10px] font-bold text-white tracking-widest uppercase italic">SIGNAL: {isLaunched ? 'EXCELLENT' : 'LOW'}</span>
+                  </div>
+                )}
+             </div>
+
+             {/* Stream Source Selector HUD */}
+             <div className="absolute top-8 right-8 flex gap-1.5 z-20 bg-black/40 backdrop-blur-xl p-1 rounded-full border border-white/20">
+                <button
+                  type="button"
+                  onClick={() => setStreamSourceMode('tunnel')}
+                  title="Tunnel URL feed"
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all",
+                    streamSourceMode === 'tunnel' ? "bg-primary-green text-white shadow-sm" : "text-white/60 hover:text-white"
+                  )}
+                >
+                  Tunnel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStreamSourceMode('local')}
+                  title="Local Wi-Fi IP stream"
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all",
+                    streamSourceMode === 'local' ? "bg-primary-green text-white shadow-sm" : "text-white/60 hover:text-white"
+                  )}
+                >
+                  Local IP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStreamSourceMode('demo')}
+                  title="Simulated preview"
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all",
+                    streamSourceMode === 'demo' ? "bg-primary-green text-white shadow-sm" : "text-white/60 hover:text-white"
+                  )}
+                >
+                  Demo
+                </button>
              </div>
 
              <div className="absolute bottom-8 right-8 z-20">
