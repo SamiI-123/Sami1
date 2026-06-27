@@ -78,7 +78,7 @@ export default function Sensors() {
             setConnectionStatus('success');
           }
         } catch (e) {
-          console.error("Direct fetch also failed:", e);
+          console.warn("Direct fetch also failed (Raspberry Pi is likely offline):", e);
           setConnectionStatus('failed');
         }
       }

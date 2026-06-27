@@ -40,8 +40,8 @@ try:
     # Attempt to open default camera (Cam index 0)
     camera = cv2.VideoCapture(0)
     # Set lower resolution for high-performance streaming over tunnels
-    camera.set(cv3.CAP_PROP_FRAME_WIDTH, 640) if hasattr(cv2, 'CAP_PROP_FRAME_WIDTH') else None
-    camera.set(cv3.CAP_PROP_FRAME_HEIGHT, 480) if hasattr(cv2, 'CAP_PROP_FRAME_HEIGHT') else None
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) if hasattr(cv2, 'CAP_PROP_FRAME_WIDTH') else None
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) if hasattr(cv2, 'CAP_PROP_FRAME_HEIGHT') else None
     print("[HARDWARE] Camera initialized successfully on index 0!")
 except Exception as e:
     print(f"[SIMULATION] Camera not accessible ({e}). Live stream will return a test pattern.")
@@ -63,10 +63,12 @@ def generate_frames():
             success, frame = camera.read()
             if not success:
                 # Fallback pattern if video frame reading fails momentarily
-                frame = cv2.putText(
-                    cv2.imread(None) or bytearray(300 * 300 * 3), 
+                import numpy as np
+                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                cv2.putText(
+                    frame, 
                     "Camera offline or busy", 
-                    (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2
+                    (80, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2
                 )
                 ret, buffer = cv2.imencode('.jpg', frame)
                 yield (b'--frame\r\n'

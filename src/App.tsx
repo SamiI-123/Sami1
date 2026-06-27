@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth, AuthProvider } from './hooks/useAuth';
-import { signInWithGoogle, logout } from './lib/firebase';
 import { 
   LayoutDashboard, Drone, ShieldAlert, Thermometer, 
   Users, Settings, LogOut, Loader2, Sparkles,
@@ -17,6 +16,7 @@ import Sensors from './views/Sensors';
 import Community from './views/Community';
 import Profile from './views/Profile';
 import ExpertConsole from './views/ExpertConsole';
+import AdminDashboard from './views/AdminDashboard';
 import SettingsView from './views/Settings';
 import About from './views/About';
 import Auth from './views/Auth';
@@ -24,48 +24,84 @@ import Landing from './views/Landing';
 import QuickActions from './components/QuickActions';
 import { NAV_ITEMS } from './constants';
 
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { db } from './lib/firebase';
-
 function MainApp() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('landing');
-  const [profile, setProfile] = useState<any>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userRole, setUserRole] = useState<'farmer' | 'expert' | 'admin'>('farmer');
 
   // Guest fallback
   const guestUser = {
-    uid: 'guest_user',
+    id: 'guest_user',
     displayName: 'Samson Abreham',
     email: 'guest@agrinovia.tech',
+    role: 'farmer' as const,
     photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Samson'
   };
 
-  useAuth(); // keep hook reactive
+  const userRole = user ? user.role : 'farmer';
 
+  // Listen to popstate event (browser back/forward) to synchronize URL and active Tab
+  React.useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname;
+      if (path === '/admin') {
+        setActiveTab('admin');
+      } else if (path === '/expert') {
+        setActiveTab('expert');
+      } else if (path === '/farmer') {
+        setActiveTab('dashboard');
+      } else if (path === '/') {
+        if (user) {
+          if (user.role === 'admin') setActiveTab('admin');
+          else if (user.role === 'expert') setActiveTab('expert');
+          else setActiveTab('dashboard');
+        } else {
+          setActiveTab('landing');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    // Sync initial pathname
+    handleLocationChange();
+
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, [user]);
+
+  // Handle role-based redirections upon authentication state change
   React.useEffect(() => {
     if (user) {
       setShowAuth(false);
-      // Set to dashboard when logged in if currently on landing
-      if (activeTab === 'landing') {
-        setActiveTab('dashboard');
-      }
-      const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-        if (doc.exists()) {
-          setProfile(doc.data());
+      const role = user.role;
+      const currentPath = window.location.pathname;
+
+      if (role === 'admin') {
+        if (currentPath !== '/admin') {
+          window.history.pushState({}, "", "/admin");
+          setActiveTab('admin');
         }
-      });
-      return unsub;
+      } else if (role === 'expert') {
+        if (currentPath !== '/expert') {
+          window.history.pushState({}, "", "/expert");
+          setActiveTab('expert');
+        }
+      } else if (role === 'farmer') {
+        // Only redirect if they aren't on other valid subpages of farmer
+        const validFarmerPaths = ['/farmer', '/diagnostics', '/sensors', '/community', '/profile', '/settings', '/about'];
+        if (!validFarmerPaths.includes(currentPath)) {
+          window.history.pushState({}, "", "/farmer");
+          setActiveTab('dashboard');
+        }
+      }
+    } else {
+      // If logged out and not on root landing, reset path to root
+      if (window.location.pathname !== '/') {
+        window.history.pushState({}, "", "/");
+        setActiveTab('landing');
+      }
     }
   }, [user]);
-
-  React.useEffect(() => {
-    if (profile) {
-      setUserRole(profile.role || 'farmer');
-    }
-  }, [profile]);
 
   if (authLoading) {
     return (
@@ -128,6 +164,7 @@ function MainApp() {
         <nav className="flex-1 space-y-2">
           {NAV_ITEMS.filter(item => {
             if (item.id === 'expert') return userRole === 'expert' || userRole === 'admin';
+            if (item.id === 'admin') return userRole === 'admin';
             return true;
           }).map((item) => (
             <button
@@ -135,6 +172,16 @@ function MainApp() {
               onClick={() => {
                 setActiveTab(item.id);
                 setIsSidebarOpen(false);
+                // Synchronize URL path with active tab selection
+                if (item.id === 'admin') {
+                  window.history.pushState({}, "", "/admin");
+                } else if (item.id === 'expert') {
+                  window.history.pushState({}, "", "/expert");
+                } else if (item.id === 'dashboard') {
+                  window.history.pushState({}, "", "/farmer");
+                } else {
+                  window.history.pushState({}, "", `/${item.id}`);
+                }
               }}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all group",
@@ -271,6 +318,7 @@ function MainApp() {
               {activeTab === 'community' && <Community />}
               {activeTab === 'profile' && <Profile />}
               {activeTab === 'expert' && <ExpertConsole />}
+              {activeTab === 'admin' && <AdminDashboard />}
               {activeTab === 'settings' && <SettingsView />}
               {activeTab === 'about' && <About />}
             </motion.div>

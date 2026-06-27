@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-import { db } from '../lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { logout } from '../lib/firebase';
 import { 
   User as UserIcon, Camera, Phone, MapPin, Briefcase, 
   Save, Loader2, CheckCircle2, Shield, LogOut
@@ -13,7 +10,7 @@ import { cn } from '../lib/utils';
 type Role = 'farmer' | 'expert' | 'admin';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -28,12 +25,13 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      setProfile(prev => ({
-        ...prev,
+      setProfile({
         displayName: user.displayName || '',
-        photoURL: user.photoURL || '',
-      }));
-      fetchProfile();
+        phoneNumber: user.phoneNumber || '',
+        location: user.location || '',
+        role: user.role || 'farmer',
+        photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.displayName || '')}`
+      });
     } else {
       // Guest initialization
       setProfile({
@@ -46,26 +44,6 @@ export default function Profile() {
     }
   }, [user]);
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setProfile(prev => ({
-          ...prev,
-          ...data
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!user) {
       setMsg('You must be signed in to save changes');
@@ -75,29 +53,18 @@ export default function Profile() {
     setSaving(true);
     setMsg('');
     try {
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      const updateData = {
-        ...profile,
-        uid: user.uid,
-        email: user.email,
-        updatedAt: new Date().toISOString()
-      };
-
-      if (!docSnap.exists()) {
-        await setDoc(docRef, {
-          ...updateData,
-          createdAt: new Date().toISOString()
-        });
-      } else {
-        await updateDoc(docRef, updateData);
-      }
+      await updateProfile({
+        displayName: profile.displayName,
+        phoneNumber: profile.phoneNumber,
+        location: profile.location,
+        role: profile.role,
+        photoURL: profile.photoURL
+      });
       setMsg('Profile updated successfully');
       setTimeout(() => setMsg(''), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving profile:', err);
-      setMsg('Failed to update profile');
+      setMsg(err.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }

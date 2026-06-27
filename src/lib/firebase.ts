@@ -12,7 +12,19 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import firebaseConfig from '@/firebase-applet-config.json';
+import firebaseConfigDefault from '@/firebase-applet-config.json';
+
+const env = (import.meta as any).env || {};
+
+const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || firebaseConfigDefault?.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigDefault?.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || firebaseConfigDefault?.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigDefault?.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigDefault?.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || firebaseConfigDefault?.appId,
+  firestoreDatabaseId: env.VITE_FIREBASE_DATABASE_ID || firebaseConfigDefault?.firestoreDatabaseId || "ai-studio-f1b0d3da-4d24-494d-b046-921ccc9fe074"
+};
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -22,7 +34,7 @@ export const auth = initializeAuth(app, {
 });
 export const googleProvider = new GoogleAuthProvider();
 
-enum OperationType {
+export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
   DELETE = 'delete',
@@ -42,7 +54,7 @@ interface FirestoreErrorInfo {
   }
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {

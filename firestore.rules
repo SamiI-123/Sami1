@@ -18,6 +18,10 @@ service cloud.firestore {
       return isSignedIn(); // Relaxing for demo/dev speed, or use token.email_verified == true if strict
     }
 
+    function isAdmin() {
+      return isSignedIn() && (request.auth.uid == 'SbDqWI1WCaWuXwRnbm26fXXJvk23' || request.auth.token.email == 'samsonabrhamtad@gmail.com');
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -35,7 +39,7 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     function isValidUser(data) {
-      return data.uid == request.auth.uid 
+      return (data.uid == request.auth.uid || isAdmin())
         && data.email is string && data.email.size() <= 256
         && data.displayName is string && data.displayName.size() <= 128
         && (data.role == 'farmer' || data.role == 'expert' || data.role == 'admin')
@@ -44,7 +48,7 @@ service cloud.firestore {
     }
 
     function isValidFarm(data) {
-      return data.ownerId == request.auth.uid
+      return (data.ownerId == request.auth.uid || isAdmin())
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.createdAt == request.time
         && data.keys().hasAll(['ownerId', 'name', 'createdAt'])
@@ -52,7 +56,7 @@ service cloud.firestore {
     }
 
     function isValidReport(data) {
-      return data.ownerId == request.auth.uid
+      return (data.ownerId == request.auth.uid || isAdmin())
         && data.imageUrl is string && data.imageUrl.size() >= 10 && data.imageUrl.size() <= 2000000
         && data.findings is string && data.findings.size() <= 100000
         && data.status in ['pending', 'completed', 'error']
@@ -83,6 +87,7 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
 
     match /users/{userId} {
+      allow get, list, create, update, delete: if isAdmin();
       allow get: if isOwner(userId);
       allow list: if false; // Users cannot list other users
       allow create: if isOwner(userId) && isValidUser(incoming()) && isVerified();
@@ -93,6 +98,7 @@ service cloud.firestore {
     }
 
     match /farms/{farmId} {
+      allow get, list, create, update, delete: if isAdmin();
       allow get: if isSignedIn() && isValidId(farmId);
       allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isVerified() && isValidFarm(incoming());
@@ -104,6 +110,7 @@ service cloud.firestore {
     }
 
     match /drone_sessions/{sessionId} {
+      allow get, list, create, update, delete: if isAdmin();
       // Sessions relate to farms. Access check requires farm lookup.
       allow get: if isSignedIn() && isValidId(sessionId) 
         && isOwner(get(/databases/$(database)/documents/farms/$(existing().farmId)).data.ownerId);
@@ -113,6 +120,7 @@ service cloud.firestore {
     }
 
     match /ai_reports/{reportId} {
+      allow get, list, create, update, delete: if isAdmin();
       allow get: if isOwner(existing().ownerId) && isValidId(reportId);
       allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isVerified() && isValidReport(incoming());
@@ -124,11 +132,27 @@ service cloud.firestore {
     }
 
     match /sensor_readings/{readingId} {
+      allow get, list, create, update, delete: if isAdmin();
       allow read: if isSignedIn() && isValidId(readingId)
         && isOwner(get(/databases/$(database)/documents/farms/$(existing().farmId)).data.ownerId);
       allow list: if isSignedIn() && isOwner(get(/databases/$(database)/documents/farms/$(resource.data.farmId)).data.ownerId);
       allow create: if isVerified() && isValidSensorData(incoming())
         && isOwner(get(/databases/$(database)/documents/farms/$(incoming().farmId)).data.ownerId);
+    }
+
+    match /drones/{droneId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
+    }
+
+    match /payments/{paymentId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
+    }
+
+    match /system_settings/{settingId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
     }
   }
 }
