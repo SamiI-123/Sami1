@@ -157,7 +157,9 @@ export const dbClient = {
     }
     try {
       console.log("🔌 Attempting to connect to MongoDB...");
-      await mongoose.connect(MONGODB_URI);
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000
+      } as any);
       console.log("✅ Successfully connected to MongoDB Atlas!");
     } catch (error) {
       console.error("❌ MongoDB connection error. Falling back to local JSON engine:", error);
